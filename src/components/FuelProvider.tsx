@@ -7,13 +7,21 @@ import {
 } from "@fuels/react";
 import React, { useEffect, useState } from "react";
 import griffyLogo from "../assets/griffy_logo.svg";
-import { Assets } from "../utils/assetMap";
-import { Assets as FAssets, assets } from "@fuel-ts/account";
+import { assets } from "@fuel-ts/account";
 
 type Balance = {
   assetId: string;
   amount: number;
   symbol: string | undefined;
+};
+
+type WalletAsset = {
+  id: string;
+  icon: string;
+  name: string;
+  symbol: string;
+  balance?: number;
+  decimal: number;
 };
 
 const FuelProviderSetup: React.FC = () => {
@@ -22,15 +30,12 @@ const FuelProviderSetup: React.FC = () => {
   const { disconnectAsync } = useDisconnect();
   const { refetch } = useAccount();
   const { wallet } = useWallet();
-  const [transferAddress, setTransferAddress] = useState(
-    "0xa671949e92e3cf75a497f"
-  );
-  const [balances, setBalances] = useState<Balance[]>([]);
-  const [selectedAssetId, setSelectedAssetId] = useState<string>("");
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [transferAddress, setTransferAddress] = useState(); 
   const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
   const { sendTransactionAsync } = useSendTransaction();
-  const [selectedAsset, setSelectedAsset] = useState<any | null>(null); // State to hold the selected asset
+  const [assetsWithBalance, setAssetWithBalances] = useState<WalletAsset[]>([]);
+  const [selectedAsset, setSelectedAsset] = useState<WalletAsset | null>(null);
+  const [dummy, setDummy] = useState<number>(0)
 
   const handleLogout = async () => {
     try {
@@ -40,54 +45,37 @@ const FuelProviderSetup: React.FC = () => {
     }
   };
 
-  const getBalances = async () => {
-    try {
-      const balancesData = (await wallet?.getBalances())?.balances;
-      if (balancesData) {
-        const extractedBalances = balancesData.map((balance: any) => ({
-          assetId: balance.assetId,
-          amount: +balance.amount, // Convert amount to a number
-          symbol: Assets[balance.assetId], // Retrieve the symbol from Assets
-        }));
-        setBalances(extractedBalances); // Update the balances state here
-        console.log(extractedBalances); // Log to check if balances are populated
-      }
-    } catch (error) {
-      refetch();
-    }
-  };
-
   useEffect(() => {
-    getBalances(); // Fetch balances on component mount
-  }, [wallet]);
+    const filteredAssets: WalletAsset[] = assets
+      .map((asset) => {
+        const network = asset.networks.find(
+          (network) =>
+            network.chainId === wallet?.provider.getChainId() &&
+            network.type === "fuel"
+        );
 
-  // Function to find the asset based on its symbol
-  const findAssetBySymbol = (symbol: string) => {
-    // Find the asset with the matching symbol
-    const matchingAsset = assets.find((asset) => asset.symbol === symbol);
+        if (network) {
+          const walletAsset: WalletAsset = {
+            symbol: asset.symbol,
+            icon: asset.icon,
+            id: network["assetId"],
+            name: asset.name,
+            decimal: network.decimals,
+          };
 
-    // If an asset is found, return it
-    if (matchingAsset) {
-      console.log("Matching Asset: ", matchingAsset);
-      return matchingAsset;
-    } else {
-      console.log("No asset found with symbol:", symbol);
-      return null;
-    }
-  };
+          return walletAsset;
+        }
+        return null;
+      })
+      .filter(Boolean);
 
-  // Function to get decimals for 'fuel' network with chainId 0
-  const getFuelDecimals = (networks: Array<any>) => {
-    // Find the network with type 'fuel' and chainId 0
-    const fuelNetwork = networks.find(
-      (network) =>
-        network.type === "fuel" &&
-        network.chainId === wallet?.provider.getChainId()
-    );
+    filteredAssets.map(async (asset) => {
+      const balance = +(await wallet?.getBalance(asset.id)) || 0;
+      asset.balance = balance / 10 ** asset.decimal;
+    });
 
-    // If found, return the decimals, otherwise return null
-    return fuelNetwork ? fuelNetwork.decimals : null;
-  };
+    setAssetWithBalances(filteredAssets);
+  }, [wallet, dummy]);
 
   const handleTransaction = async (
     destination: string,
@@ -96,12 +84,12 @@ const FuelProviderSetup: React.FC = () => {
     if (!wallet) {
       throw new Error("Current wallet is not authorized for this connection!");
     }
-    const amount = amountToTransfer;
+    const amount = amountToTransfer * 10**selectedAsset?.decimal;
 
     const transactionRequest = await wallet.createTransfer(
       destination,
       amount,
-      selectedAssetId
+      selectedAsset?.id
     );
 
     // Broadcast the transaction to the network
@@ -110,30 +98,24 @@ const FuelProviderSetup: React.FC = () => {
       transaction: transactionRequest, // The transaction to send
     });
 
+    setTimeout(()=>{setDummy((prev)=>prev+1), console.log("state changed")},1000)
+
     console.log(tx);
   };
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedId = e.target.value;
-    setSelectedAssetId(selectedId);
-
-    // Find the corresponding balance for the selected asset
-    const selectedBalance = balances.find(
-      (balance) => balance.assetId === selectedId
+    const selectedAssetId = e.target.value;
+    const selectedAssetObject = assetsWithBalance.find(
+      (asset) => asset.id === selectedAssetId
     );
-    if (selectedBalance) {
-      setSelectedAmount(selectedBalance.amount);
 
-      // Find the asset details based on the symbol
-      const asset = findAssetBySymbol(selectedBalance.symbol || "");
-      setSelectedAsset(asset); // Set the selected asset
-    }
+    console.log(selectedAssetObject);
+
+    // Set the selected asset object to state
+    if (!selectedAssetObject) return;
+    setSelectedAsset(selectedAssetObject);
   };
-
-  const selectedSymbol = balances.find(
-    (balance) => balance.assetId === selectedAssetId
-  )?.symbol;
-
+ 
   return (
     <div className="flex justify-center items-center h-screen bg-black">
       <div className="w-full max-w-6xl p-8 bg-gray-900 rounded-lg shadow-md flex">
@@ -185,52 +167,33 @@ const FuelProviderSetup: React.FC = () => {
                 <div>
                   <h2 className="text-gray-200 mb-2">Select an Asset</h2>
                   <select
-                    value={selectedAssetId || ""}
-                    onChange={handleSelectChange}
+                    value={selectedAsset?.id || ""}
+                    onChange={(e) => handleSelectChange(e)}
                     className="border p-3 rounded-lg bg-gray-800 mb-3 text-white w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="" disabled>
                       Select an asset
                     </option>
-                    {balances.map((balance) => (
-                      <option key={balance.assetId} value={balance.assetId}>
-                        {balance.symbol || "Unknown"} -{" "}
-                        {balance.assetId.substring(0, 6)}...
-                        {balance.assetId.substring(balance.assetId.length - 4)}
+                    {assetsWithBalance.map((asset) => (
+                      <option key={asset.id} value={asset.id}>
+                        {asset.symbol || "Unknown"} - {asset.id.substring(0, 6)}
+                        ...
+                        {asset.id.substring(asset.id.length - 4)}
                       </option>
                     ))}
                   </select>
 
                   {/* Display the selected balance */}
-                  {selectedAmount !== null && (
+                  {selectedAsset && (
                     <div>
                       <p className="text-gray-200">Balance</p>
                       <p className="text-lg font-bold  mb-3">
-                        {selectedAmount}
+                        {selectedAsset?.balance}
                       </p>
                     </div>
                   )}
 
                   {/* Display the selected asset details */}
-                  {selectedAsset && (
-                    <div>
-                      <p className="text-gray-200">Selected Asset Details:</p>
-                      <p>
-                        Icon:{" "}
-                        <img
-                          src={selectedAsset.icon}
-                          alt="icon"
-                          className="h-6 inline-block"
-                        />
-                      </p>
-                      <p>Name: {selectedAsset.name}</p>
-                      {/* Get the decimals for the 'fuel' network with chainId 0 */}
-                      <p>
-                        Decimals (Fuel, Chain ID 0):{" "}
-                        {getFuelDecimals(selectedAsset.networks)}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 <div className="mb-4">
@@ -240,6 +203,7 @@ const FuelProviderSetup: React.FC = () => {
                     value={transferAddress}
                     onChange={(e) => setTransferAddress(e.target.value)}
                     className="bg-gray-700 text-gray-400 py-2 px-4 rounded-lg w-full mb-2"
+                    placeholder="Wallet address"
                   />
 
                   <p className="text-gray-200">Amount to Transfer</p>
@@ -261,8 +225,8 @@ const FuelProviderSetup: React.FC = () => {
                     }
                     disabled={!transferAddress || !transferAmount} // Disable if no address or amount
                   >
-                    Transfer {transferAmount || "0"}{" "}
-                    {selectedSymbol || "Unknown"}
+                    Transfer {transferAmount}{" "}
+                    {selectedAsset?.symbol || "Unknown"}
                   </button>
                 </div>
               </div>
