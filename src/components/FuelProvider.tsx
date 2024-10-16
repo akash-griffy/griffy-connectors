@@ -1,18 +1,34 @@
-import { useAccount, useConnectUI, useDisconnect } from "@fuels/react";
-import React, { useState } from "react";
+import {
+  useAccount,
+  useConnectUI,
+  useDisconnect,
+  useSendTransaction,
+  useWallet,
+} from "@fuels/react";
+import React, { useEffect, useState } from "react";
 import griffyLogo from "../assets/griffy_logo.svg";
+import { Assets } from "../utils/assetMap";
+
+type Balance = {
+  assetId: string;
+  amount: number;
+  symbol: string | undefined;
+};
 
 const FuelProviderSetup: React.FC = () => {
   const { connect } = useConnectUI();
   const { account } = useAccount();
   const { disconnectAsync } = useDisconnect();
   const { refetch } = useAccount();
-
-  const [balance] = useState("0.000 ETH");
+  const { wallet } = useWallet();
   const [transferAddress, setTransferAddress] = useState(
     "0xa671949e92e3cf75a497f"
   );
-  const [message, setMessage] = useState("Fuelum ipsum FuelVM sit amet.");
+  const [balances, setBalances] = useState<Balance[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
+  const { sendTransaction, data, isPending, error } = useSendTransaction();
 
   const handleLogout = async () => {
     try {
@@ -21,6 +37,66 @@ const FuelProviderSetup: React.FC = () => {
       refetch();
     }
   };
+
+  const getBalances = async () => {
+    try {
+      const balancesData = (await wallet?.getBalances())?.balances;
+      if (balancesData) {
+        const extractedBalances = balancesData.map((balance: any) => ({
+          assetId: balance.assetId,
+          amount: +balance.amount, // Convert amount to a number
+          symbol: Assets[balance.assetId], // Retrieve the symbol from Assets
+        }));
+        setBalances(extractedBalances); // Update the balances state here
+        console.log(extractedBalances); // Log to check if balances are populated
+      }
+    } catch (error) {
+      refetch();
+    }
+  };
+
+  useEffect(() => {
+    getBalances(); // Fetch balances on component mount
+  }, [wallet]);
+
+  const handleTransaction = async (
+    destination: string,
+    amountToTransfer: number
+  ) => {
+    console.log("destination: " + destination);
+    console.log("amountotransfer: " + amountToTransfer);
+    if (!wallet) {
+      throw new Error("Current wallet is not authorized for this connection!");
+    }
+    const amount = amountToTransfer;
+
+    const transactionRequest = await wallet.createTransfer(destination, amount);
+
+    console.log("transaction request: " + transactionRequest);
+    // Broadcast the transaction to the network
+    sendTransaction({
+      address: wallet.address, // The address to sign the transaction (a connected wallet)
+      transaction: transactionRequest, // The transaction to send
+    });
+  };
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value;
+    setSelectedAssetId(selectedId);
+
+    // Find the corresponding balance for the selected asset
+    const selectedBalance = balances.find(
+      (balance) => balance.assetId === selectedId
+    );
+    if (selectedBalance) {
+      setSelectedAmount(selectedBalance.amount);
+    }
+  };
+
+  const selectedSymbol = balances.find(
+    (balance) => balance.assetId === selectedAssetId
+  )?.symbol;
+
   return (
     <div className="flex justify-center items-center h-screen bg-black">
       <div className="w-full max-w-6xl p-8 bg-gray-900 rounded-lg shadow-md flex">
@@ -69,50 +145,65 @@ const FuelProviderSetup: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <p className="text-gray-200">Balance</p>
-                    <p className="text-lg font-bold">{balance}</p>
-                  </div>
-                  <button
-                    className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-500 transition duration-300"
-                    onClick={() => alert("Getting coins")}
+                <div>
+                  <h2 className="text-gray-200 mb-2">Select an Asset</h2>
+                  <select
+                    value={selectedAssetId || ""}
+                    onChange={handleSelectChange}
+                    className="border p-3 rounded-lg bg-gray-800 mb-3 text-white w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    Get coins
-                  </button>
-                </div>
+                    <option value="" disabled>
+                      Select an asset
+                    </option>
+                    {balances.map((balance) => (
+                      <option key={balance.assetId} value={balance.assetId}>
+                        {balance.symbol || "Unknown"} -{" "}
+                        {balance.assetId.substring(0, 6)}...
+                        {balance.assetId.substring(balance.assetId.length - 4)}
+                      </option>
+                    ))}
+                  </select>
 
+                  {/* Display the selected balance */}
+                  {selectedAmount !== null && (
+                    <div>
+                      <p className="text-gray-200">Balance</p>
+                      <p className="text-lg font-bold  mb-3">
+                        {selectedAmount}
+                      </p>
+                    </div>
+                  )}
+                </div>
                 <div className="mb-4">
-                  <p className="text-gray-200">Transfer</p>
+                  <p className="text-gray-200">Transfer To</p>
                   <input
                     type="text"
                     value={transferAddress}
                     onChange={(e) => setTransferAddress(e.target.value)}
                     className="bg-gray-700 text-gray-400 py-2 px-4 rounded-lg w-full mb-2"
                   />
+
+                  <p className="text-gray-200">Amount to Transfer</p>
+                  <input
+                    type="number"
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
+                    className="bg-gray-700 text-gray-400 py-2 px-4 rounded-lg w-full mb-2 "
+                    placeholder="Enter amount"
+                    min="0" // Prevent negative values
+                  />
                   <button
                     className="bg-green-600 text-white py-2 px-4 rounded-lg w-full hover:bg-gray-600 transition duration-300"
                     onClick={() =>
-                      alert(`Transferring 0.0001 ETH to ${transferAddress}`)
+                      handleTransaction(
+                        transferAddress,
+                        parseFloat(transferAmount)
+                      )
                     }
+                    disabled={!transferAddress || !transferAmount} // Disable if no address or amount
                   >
-                    Transfer 0.0001 ETH
-                  </button>
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-gray-200">Sign</p>
-                  <input
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="bg-gray-700 text-gray-400 py-2 px-4 rounded-lg w-full mb-2"
-                  />
-                  <button
-                    className="bg-green-600 text-white py-2 px-4 rounded-lg w-full hover:bg-green-500 transition duration-300"
-                    onClick={() => alert(`Signing message: ${message}`)}
-                  >
-                    Sign Message
+                    Transfer {transferAmount || "0"}{" "}
+                    {selectedSymbol || "Unknown"}
                   </button>
                 </div>
               </div>
