@@ -30,12 +30,12 @@ const FuelProviderSetup: React.FC = () => {
   const { disconnectAsync } = useDisconnect();
   const { refetch } = useAccount();
   const { wallet } = useWallet();
-  const [transferAddress, setTransferAddress] = useState(); 
+  const [transferAddress, setTransferAddress] = useState();
   const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
   const { sendTransactionAsync } = useSendTransaction();
   const [assetsWithBalance, setAssetWithBalances] = useState<WalletAsset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<WalletAsset | null>(null);
-  const [dummy, setDummy] = useState<number>(0)
+  const [dummy, setDummy] = useState<number>(0);
 
   const handleLogout = async () => {
     try {
@@ -84,7 +84,7 @@ const FuelProviderSetup: React.FC = () => {
     if (!wallet) {
       throw new Error("Current wallet is not authorized for this connection!");
     }
-    const amount = amountToTransfer * 10**selectedAsset?.decimal;
+    const amount = amountToTransfer * 10 ** selectedAsset?.decimal;
 
     const transactionRequest = await wallet.createTransfer(
       destination,
@@ -98,7 +98,9 @@ const FuelProviderSetup: React.FC = () => {
       transaction: transactionRequest, // The transaction to send
     });
 
-    setTimeout(()=>{setDummy((prev)=>prev+1), console.log("state changed")},1000)
+    setTimeout(() => {
+      setDummy((prev) => prev + 1), console.log("state changed");
+    }, 1000);
 
     console.log(tx);
   };
@@ -115,7 +117,7 @@ const FuelProviderSetup: React.FC = () => {
     if (!selectedAssetObject) return;
     setSelectedAsset(selectedAssetObject);
   };
- 
+
   return (
     <div className="flex justify-center items-center h-screen bg-black">
       <div className="w-full max-w-6xl p-8 bg-gray-900 rounded-lg shadow-md flex">
@@ -123,19 +125,32 @@ const FuelProviderSetup: React.FC = () => {
         <div className="w-1/2 pr-6">
           <div className="text-left mb-4">
             {/* Griffy Logo */}
-            <img src={griffyLogo} alt="Griffy logo" className="h-10 " />
+            <a href="https://trade.griffy.app" target="_blank">
+              <img src={griffyLogo} alt="Griffy logo" className="h-10 " />
+            </a>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-200 mb-4">Wallet Demo</h2>
-          <p className="text-gray-200 text-sm mb-6">
-            Griffy enables developers to build integrations with any wallet.
-          </p>
-
+          <h3 className="text-2xl font-bold text-gray-200 mb-4">
+            Fuel Wallet Connect
+          </h3>
+          <br></br>
+          <h4 className="text-xl font-bold text-gray-200 mb-4">
+            Connect Any Wallet
+          </h4>
           <ul className="list-disc list-inside text-gray-200 mb-6 space-y-2">
-            <li>Reduce friction for users</li>
-            <li>Build using any signature scheme</li>
-            <li>Use predicates, a new type of stateless smart contract</li>
+            <li>Ethereum Wallets</li>
+            <li>Solana Wallets</li>
+            <li>Fuel Wallets</li>
           </ul>
+
+          <h4 className="text-xl font-bold text-gray-200 mb-4">
+            Built by Griffy <br></br>
+          </h4>
+          <h5 className="text-l font-bold text-gray-200 mb-4">
+            <a href="https://trade.griffy.app" target="_blank">
+              The world's only decentralized prediction market
+            </a>
+          </h5>
         </div>
 
         {/* Right side with Connect Wallet button or account details */}
@@ -152,8 +167,16 @@ const FuelProviderSetup: React.FC = () => {
                         "..." +
                         account.substring(account.length - 6)}
                     </p>
-                    <a href="#" className="text-blue-400 text-sm underline">
+                    {/* <a href="#" className="text-blue-400 text-sm underline">
                       View on Explorer
+                    </a> */}
+                    <a
+                      href={`https://app.fuel.network/account/${account}/assets`}
+                      className="text-blue-400 text-sm underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View on explorer
                     </a>
                   </div>
                   <button
@@ -197,7 +220,7 @@ const FuelProviderSetup: React.FC = () => {
                 </div>
 
                 <div className="mb-4">
-                  <p className="text-gray-200">Transfer To</p>
+                  <p className="text-gray-200 mb-2">Transfer To</p>
                   <input
                     type="text"
                     value={transferAddress}
@@ -206,7 +229,7 @@ const FuelProviderSetup: React.FC = () => {
                     placeholder="Wallet address"
                   />
 
-                  <p className="text-gray-200">Amount to Transfer</p>
+                  <p className="text-gray-200 mb-2">Amount to Transfer</p>
                   <input
                     type="number"
                     value={transferAmount}
@@ -216,7 +239,7 @@ const FuelProviderSetup: React.FC = () => {
                     min="0" // Prevent negative values
                   />
                   <button
-                    className="bg-green-600 text-white py-2 px-4 rounded-lg w-full hover:bg-gray-600 transition duration-300"
+                    className="bg-green-600 text-white py-2 px-4 rounded-lg w-full hover:bg-gray-600 transition duration-300 mb-2"
                     onClick={() =>
                       handleTransaction(
                         transferAddress,
