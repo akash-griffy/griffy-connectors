@@ -8,6 +8,7 @@ import {
 import React, { useEffect, useState } from "react";
 import griffyLogo from "../assets/griffy_logo.svg";
 import { Assets } from "../utils/assetMap";
+import { Assets as FAssets, assets } from "@fuel-ts/account";
 
 type Balance = {
   assetId: string;
@@ -28,7 +29,8 @@ const FuelProviderSetup: React.FC = () => {
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
-  const { sendTransaction } = useSendTransaction();
+  const { sendTransactionAsync } = useSendTransaction();
+  const [selectedAsset, setSelectedAsset] = useState<any | null>(null); // State to hold the selected asset
 
   const handleLogout = async () => {
     try {
@@ -59,16 +61,42 @@ const FuelProviderSetup: React.FC = () => {
     getBalances(); // Fetch balances on component mount
   }, [wallet]);
 
+  // Function to find the asset based on its symbol
+  const findAssetBySymbol = (symbol: string) => {
+    // Find the asset with the matching symbol
+    const matchingAsset = assets.find((asset) => asset.symbol === symbol);
+
+    // If an asset is found, return it
+    if (matchingAsset) {
+      console.log("Matching Asset: ", matchingAsset);
+      return matchingAsset;
+    } else {
+      console.log("No asset found with symbol:", symbol);
+      return null;
+    }
+  };
+
+  // Function to get decimals for 'fuel' network with chainId 0
+  const getFuelDecimals = (networks: Array<any>) => {
+    // Find the network with type 'fuel' and chainId 0
+    const fuelNetwork = networks.find(
+      (network) =>
+        network.type === "fuel" &&
+        network.chainId === wallet?.provider.getChainId()
+    );
+
+    // If found, return the decimals, otherwise return null
+    return fuelNetwork ? fuelNetwork.decimals : null;
+  };
+
   const handleTransaction = async (
     destination: string,
     amountToTransfer: number
   ) => {
-    console.log("destination: " + destination);
     if (!wallet) {
       throw new Error("Current wallet is not authorized for this connection!");
     }
-    const amount = amountToTransfer * 10 ** 6;
-    console.log("amountotransfer: " + amount);
+    const amount = amountToTransfer;
 
     const transactionRequest = await wallet.createTransfer(
       destination,
@@ -76,12 +104,13 @@ const FuelProviderSetup: React.FC = () => {
       selectedAssetId
     );
 
-    console.log("transaction request: " + transactionRequest);
     // Broadcast the transaction to the network
-    sendTransaction({
+    const tx = await sendTransactionAsync({
       address: wallet.address, // The address to sign the transaction (a connected wallet)
       transaction: transactionRequest, // The transaction to send
     });
+
+    console.log(tx);
   };
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -94,6 +123,10 @@ const FuelProviderSetup: React.FC = () => {
     );
     if (selectedBalance) {
       setSelectedAmount(selectedBalance.amount);
+
+      // Find the asset details based on the symbol
+      const asset = findAssetBySymbol(selectedBalance.symbol || "");
+      setSelectedAsset(asset); // Set the selected asset
     }
   };
 
@@ -177,7 +210,29 @@ const FuelProviderSetup: React.FC = () => {
                       </p>
                     </div>
                   )}
+
+                  {/* Display the selected asset details */}
+                  {selectedAsset && (
+                    <div>
+                      <p className="text-gray-200">Selected Asset Details:</p>
+                      <p>
+                        Icon:{" "}
+                        <img
+                          src={selectedAsset.icon}
+                          alt="icon"
+                          className="h-6 inline-block"
+                        />
+                      </p>
+                      <p>Name: {selectedAsset.name}</p>
+                      {/* Get the decimals for the 'fuel' network with chainId 0 */}
+                      <p>
+                        Decimals (Fuel, Chain ID 0):{" "}
+                        {getFuelDecimals(selectedAsset.networks)}
+                      </p>
+                    </div>
+                  )}
                 </div>
+
                 <div className="mb-4">
                   <p className="text-gray-200">Transfer To</p>
                   <input
