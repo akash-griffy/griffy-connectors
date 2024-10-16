@@ -25,10 +25,10 @@ const FuelProviderSetup: React.FC = () => {
     "0xa671949e92e3cf75a497f"
   );
   const [balances, setBalances] = useState<Balance[]>([]);
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string>("");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
-  const { sendTransaction, data, isPending, error } = useSendTransaction();
+  const { sendTransaction } = useSendTransaction();
 
   const handleLogout = async () => {
     try {
@@ -64,13 +64,17 @@ const FuelProviderSetup: React.FC = () => {
     amountToTransfer: number
   ) => {
     console.log("destination: " + destination);
-    console.log("amountotransfer: " + amountToTransfer);
     if (!wallet) {
       throw new Error("Current wallet is not authorized for this connection!");
     }
-    const amount = amountToTransfer;
+    const amount = amountToTransfer * 10 ** 6;
+    console.log("amountotransfer: " + amount);
 
-    const transactionRequest = await wallet.createTransfer(destination, amount);
+    const transactionRequest = await wallet.createTransfer(
+      destination,
+      amount,
+      selectedAssetId
+    );
 
     console.log("transaction request: " + transactionRequest);
     // Broadcast the transaction to the network
