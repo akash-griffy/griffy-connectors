@@ -10,6 +10,8 @@ import React, { useEffect, useState } from "react";
 import solFlairyLogo from "../assets/solFlairy_logo.svg";
 import { Provider } from "@fuel-ts/account";
 import Swal from "sweetalert2";
+import * as mira from 'mira-dex-ts'
+import { getAvailablePools } from "../utils/getPools";
 
 
 
@@ -41,6 +43,16 @@ const FuelProviderSetup: React.FC = () => {
   const { sendTransactionAsync } = useSendTransaction();
   const [selectedAsset, setSelectedAsset] = useState(allowedAssets[0])
   const [selectedAssetBalance, setSelectedAssetBalance] = useState<number>(0)
+  const [fairyRate, setFairyRate] = useState<number>(0)
+
+  
+  
+  let readonlyMiraAmm = new mira.ReadonlyMiraAmm(wallet?.provider);
+  useEffect(()=>{
+    fetchFairyBalance()
+    if(!wallet)return
+    readonlyMiraAmm = new mira.ReadonlyMiraAmm(wallet?.provider);
+  },[wallet])
 
   const handleLogout = async () => {
     try {
@@ -53,11 +65,11 @@ const FuelProviderSetup: React.FC = () => {
   const fetchFairyBalance = async()=>{
     if(!wallet)return
     const balance = +await wallet?.getBalance(allowedAssets[0].assetId)
+    const pools = await getAvailablePools(allowedAssets[0].assetId,allowedAssets[2].assetId,1000000)
+    const currentRate = await readonlyMiraAmm.getCurrentRate({bits:allowedAssets[0].assetId},pools)
+    setFairyRate((currentRate[0]*balance)/1000000)
     setSelectedAssetBalance(balance/1000000000)
   }
-  useEffect(()=>{
-    fetchFairyBalance()
-  },[wallet])
 
   const handleTransaction = async (
     destination: string,
@@ -202,8 +214,10 @@ const FuelProviderSetup: React.FC = () => {
                     <div>
                       <p className="text-gray-200">Balance</p>
                       <p className="text-lg font-bold  mb-3">
-                        {selectedAssetBalance}
+                        {selectedAssetBalance}  {allowedAssets[0].assetId == selectedAsset.assetId ? (<span>{`($${fairyRate.toFixed(3)})`}</span>):(<div></div>)}
                       </p>
+                     
+                  
                     </div>
                   )}
 
