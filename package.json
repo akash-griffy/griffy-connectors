@@ -1,5 +1,5 @@
 {
-  "name": "griffy-wallet",
+  "name": "solFlairy-wallet",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,13 +12,15 @@
   "dependencies": {
     "@fuel-ts/account": "^0.96.1",
     "@fuels/assets": "^0.20.0",
-    "@fuels/connectors": "^0.35.1",
+    "@fuels/connectors": "^0.36.1",
     "@fuels/react": "^0.35.1",
     "@tanstack/react-query": "^5.59.14",
     "@wagmi/connectors": "^5.1.15",
     "@wagmi/core": "^2.13.8",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "swal": "^0.1.0",
+    "sweetalert2": "^11.15.10"
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",

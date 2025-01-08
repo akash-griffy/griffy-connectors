@@ -6,23 +6,28 @@ import {
   useWallet,
 } from "@fuels/react";
 import React, { useEffect, useState } from "react";
-import griffyLogo from "../assets/griffy_logo.svg";
-import { assets } from "@fuel-ts/account";
+import solFlairyLogo from "../assets/solFlairy_logo.svg";
+import { Provider } from "@fuel-ts/account";
+import Swal from "sweetalert2";
 
-type Balance = {
-  assetId: string;
-  amount: number;
-  symbol: string | undefined;
-};
 
-type WalletAsset = {
-  id: string;
-  icon: string;
-  name: string;
-  symbol: string;
-  balance?: number;
-  decimal: number;
-};
+
+const allowedAssets = [
+    {
+       symbol:"FAIRY",
+       assetId:"0xc1fdba80b28f51004ede0290e904a59a7dc69d2453706c169630118a80ccde94"
+    },
+    {
+       symbol:"ETH",
+       assetId:"0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07"
+    },
+    {
+       symbol:"USDT",
+       assetId:"0xa0265fb5c32f6e8db3197af3c7eb05c48ae373605b8165b6f4a51c5b0ba4812e"
+    },
+
+] 
+
 
 const FuelProviderSetup: React.FC = () => {
   const { connect } = useConnectUI();
@@ -30,92 +35,77 @@ const FuelProviderSetup: React.FC = () => {
   const { disconnectAsync } = useDisconnect();
   const { refetch } = useAccount();
   const { wallet } = useWallet();
-  const [transferAddress, setTransferAddress] = useState();
+  const [transferAddress, setTransferAddress] = useState<string>("");
   const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
   const { sendTransactionAsync } = useSendTransaction();
-  const [assetsWithBalance, setAssetWithBalances] = useState<WalletAsset[]>([]);
-  const [selectedAsset, setSelectedAsset] = useState<WalletAsset | null>(null);
-  const [dummy, setDummy] = useState<number>(0);
+  const [selectedAsset, setSelectedAsset] = useState(allowedAssets[0])
+  const [selectedAssetBalance, setSelectedAssetBalance] = useState<number>(0)
 
   const handleLogout = async () => {
     try {
       await disconnectAsync();
     } catch (error) {
+      console.log(error)
       refetch();
     }
   };
-
-  useEffect(() => {
-    const filteredAssets: WalletAsset[] = assets
-      .map((asset) => {
-        const network = asset.networks.find(
-          (network) =>
-            network.chainId === wallet?.provider.getChainId() &&
-            network.type === "fuel"
-        );
-
-        if (network) {
-          const walletAsset: WalletAsset = {
-            symbol: asset.symbol,
-            icon: asset.icon,
-            id: network["assetId"],
-            name: asset.name,
-            decimal: network.decimals,
-          };
-
-          return walletAsset;
-        }
-        return null;
-      })
-      .filter(Boolean);
-
-    filteredAssets.map(async (asset) => {
-      const balance = +(await wallet?.getBalance(asset.id)) || 0;
-      asset.balance = balance / 10 ** asset.decimal;
-    });
-
-    setAssetWithBalances(filteredAssets);
-  }, [wallet, dummy]);
+  const fetchFairyBalance = async()=>{
+    if(!wallet)return
+    const balance = +await wallet?.getBalance(allowedAssets[0].assetId)
+    setSelectedAssetBalance(balance/1000000000)
+  }
+  useEffect(()=>{
+    fetchFairyBalance()
+  },[wallet])
 
   const handleTransaction = async (
     destination: string,
     amountToTransfer: number
   ) => {
-    if (!wallet) {
+   try{ if (!wallet) {
       throw new Error("Current wallet is not authorized for this connection!");
     }
-    const amount = amountToTransfer * 10 ** selectedAsset?.decimal;
+    const amount = amountToTransfer * 1000000;
 
     const transactionRequest = await wallet.createTransfer(
       destination,
       amount,
-      selectedAsset?.id
+      selectedAsset.assetId
     );
 
     // Broadcast the transaction to the network
     const tx = await sendTransactionAsync({
       address: wallet.address, // The address to sign the transaction (a connected wallet)
       transaction: transactionRequest, // The transaction to send
-    });
+    })
 
-    setTimeout(() => {
-      setDummy((prev) => prev + 1), console.log("state changed");
-    }, 1000);
-
-    console.log(tx);
+    Swal.fire({
+      title: 'Congratulations !',
+      text: 'Transfer successful !',
+      icon: 'success',
+      confirmButtonText: 'Cool'
+    })
+    console.log(tx)
+  }catch(e){
+      console.log(e)
+    }
   };
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSelectChange = async(e: React.ChangeEvent<HTMLSelectElement>) => {
+    if(!wallet)return
     const selectedAssetId = e.target.value;
-    const selectedAssetObject = assetsWithBalance.find(
-      (asset) => asset.id === selectedAssetId
-    );
 
-    console.log(selectedAssetObject);
+    const selected = allowedAssets.find((asset)=>asset.assetId == selectedAssetId)
+    
+    setSelectedAsset(selected || allowedAssets[0])
 
-    // Set the selected asset object to state
-    if (!selectedAssetObject) return;
-    setSelectedAsset(selectedAssetObject);
+    const balance = +await wallet?.getBalance(selectedAssetId)
+
+    if(selectedAssetId == wallet.provider.getBaseAssetId()){
+      setSelectedAssetBalance(balance/1000000000)
+    }else{
+      setSelectedAssetBalance(balance/1000000000)
+    }
   };
 
   return (
@@ -124,9 +114,9 @@ const FuelProviderSetup: React.FC = () => {
         {/* Left side with content */}
         <div className="w-1/2 pr-6">
           <div className="text-left mb-4">
-            {/* Griffy Logo */}
-            <a href="https://trade.griffy.app" target="_blank">
-              <img src={griffyLogo} alt="Griffy logo" className="h-10 " />
+            {/* SolFlairy Logo */}
+            <a href="https://fairiestoken.com" target="_blank">
+              <img src={solFlairyLogo} alt="SolFlairy logo" className="h-10 " />
             </a>
           </div>
 
@@ -144,11 +134,11 @@ const FuelProviderSetup: React.FC = () => {
           </ul>
 
           <h4 className="text-xl font-bold text-gray-200 mb-4">
-            Built by Griffy <br></br>
+            Built by SolFlairy <br></br>
           </h4>
           <h5 className="text-l font-bold text-gray-200 mb-4">
-            <a href="https://trade.griffy.app" target="_blank">
-              The world's only decentralized prediction market
+            <a href="https://fairiestoken.com" target="_blank">
+              Promoting Fairies Token 
             </a>
           </h5>
         </div>
@@ -190,18 +180,18 @@ const FuelProviderSetup: React.FC = () => {
                 <div>
                   <h2 className="text-gray-200 mb-2">Select an Asset</h2>
                   <select
-                    value={selectedAsset?.id || ""}
+                    value={selectedAsset.assetId|| ""}
                     onChange={(e) => handleSelectChange(e)}
                     className="border p-3 rounded-lg bg-gray-800 mb-3 text-white w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="" disabled>
                       Select an asset
                     </option>
-                    {assetsWithBalance.map((asset) => (
-                      <option key={asset.id} value={asset.id}>
-                        {asset.symbol || "Unknown"} - {asset.id.substring(0, 6)}
+                    {allowedAssets.map((asset) => (
+                      <option key={asset.assetId} value={asset.assetId}>
+                        {asset.symbol || "Unknown"} - {asset.assetId.substring(0, 6)}
                         ...
-                        {asset.id.substring(asset.id.length - 4)}
+                        {asset.assetId.substring(asset.assetId.length - 4)}
                       </option>
                     ))}
                   </select>
@@ -211,7 +201,7 @@ const FuelProviderSetup: React.FC = () => {
                     <div>
                       <p className="text-gray-200">Balance</p>
                       <p className="text-lg font-bold  mb-3">
-                        {selectedAsset?.balance}
+                        {selectedAssetBalance}
                       </p>
                     </div>
                   )}

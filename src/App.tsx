@@ -5,7 +5,7 @@ import "./tailwind.css"; // Import Tailwind styles
 import FuelProviderSetup from "./components/FuelProvider";
 import { structuralSharing } from "@wagmi/core/query";
 import { createConfig, http, injected } from "@wagmi/core";
-import { mainnet, sepolia } from "@wagmi/core/chains";
+import { mainnet } from "@wagmi/core/chains";
 import { coinbaseWallet, walletConnect } from "@wagmi/connectors";
 import { CHAIN_ID_NAME, PROVIDER_URL } from "./utils/config";
 import { defaultConnectors } from "@fuels/connectors";
@@ -21,17 +21,16 @@ const queryClient = new QueryClient({
 
 const WC_PROJECT_ID = import.meta.env.VITE_APP_WC_PROJECT_ID;
 const METADATA = {
-  name: "Griffy",
-  description: "The Nasdaq for opinion trading",
+  name: "SolFlairy",
+  description: "Fuel Fairies",
   url: location.href,
-  icons: ["https://griffy-defi.web.app/favicon.ico"],
+  icons: ["https://fairiestoken.com/favicon.ico"],
 };
 
 const wagmiConfig = createConfig({
-  chains: [mainnet, sepolia],
+  chains: [mainnet],
   transports: {
     [mainnet.id]: http(),
-    [sepolia.id]: http(),
   },
   syncConnectedChain: true,
   connectors: [
@@ -60,7 +59,7 @@ if (!PROVIDER_URL) {
   throw new Error("VITE_APP_RPC_URL is not set");
 }
 
-const uiConfig: UIConfig = { suggestBridge: false };
+const uiConfig: UIConfig = { suggestBridge: false,  };
 
 const NETWORKS = [
   {
