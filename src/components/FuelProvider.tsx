@@ -66,7 +66,7 @@ const FuelProviderSetup: React.FC = () => {
    try{ if (!wallet) {
       throw new Error("Current wallet is not authorized for this connection!");
     }
-    const amount = amountToTransfer * 1000000;
+    const amount = amountToTransfer * 1000000000;
 
     const transactionRequest = await wallet.createTransfer(
       destination,
