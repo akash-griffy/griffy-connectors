@@ -134,7 +134,7 @@ const FuelProviderSetup: React.FC = () => {
           </div>
 
           <h3 className="text-2xl font-bold text-gray-200 mb-4">
-            Fuel Wallet Connect
+            Fuel Fairy Portal
           </h3>
           <br></br>
           <h4 className="text-xl font-bold text-gray-200 mb-4">
@@ -154,7 +154,7 @@ const FuelProviderSetup: React.FC = () => {
               Promoting Fairies Token 
             </a>
           </h5>
-          <h5 className="text-l font-bold text-green-600 mb-4">
+          <h5 className="text-l font-bold text-white mb-4 bg-green-600 rounded-md box-border p-2 w-fit shadow-2xl shadow-green-500">
             <a href="https://mira.ly/swap/" target="_blank">
               Swap on Mira here !
             </a>
