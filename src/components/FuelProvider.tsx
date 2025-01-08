@@ -154,6 +154,11 @@ const FuelProviderSetup: React.FC = () => {
               Promoting Fairies Token 
             </a>
           </h5>
+          <h5 className="text-l font-bold text-green-600 mb-4">
+            <a href="https://mira.ly/swap/" target="_blank">
+              Swap on Mira here !
+            </a>
+          </h5>
         </div>
 
         {/* Right side with Connect Wallet button or account details */}
